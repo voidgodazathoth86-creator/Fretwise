@@ -59,7 +59,7 @@ main{min-width:0;display:grid;gap:20px;align-content:start}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.76rem;font-weight:600;background:var(--surface2);color:var(--muted)}
 .pill.good{color:var(--good)}.pill.warn{color:var(--warn)}.pill.warm{color:var(--warm)}
-input[type=text],input[type=number],input[type=time],input[type=date],select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:42px;max-width:100%}
+input[type=text],input[type=email],input[type=number],input[type=time],input[type=date],select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:42px;max-width:100%}
 input[type=range]{width:100%;accent-color:var(--accent)}
 label.f{display:grid;gap:4px;font-size:.85rem;font-weight:600;color:var(--muted)}
 .bar{height:10px;border-radius:99px;background:var(--surface2);overflow:hidden}
@@ -180,6 +180,9 @@ details>summary{cursor:pointer;font-weight:600}
 .dgrid{display:grid;gap:16px;grid-template-columns:minmax(0,360px) minmax(0,1fr);align-items:start}
 @media (max-width:700px){.dgrid{grid-template-columns:minmax(0,1fr)}}
 [hidden]{display:none!important}
+.pick{flex:1;min-width:210px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--bg);color:inherit;border:2px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;font:inherit}
+.pick[aria-pressed=true]{border-color:var(--accent)}
+.pick:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </style>
 
 <div class="app">
@@ -190,11 +193,16 @@ details>summary{cursor:pointer;font-weight:600}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
 'use strict';
 const EDITION='full';
-const FREE=EDITION==='free';
+const AK='fretwise.acct';
+const planActive=a=>!!a&&(a.status==='trialing'||a.status==='subscribed');
+const ownedFrom=list=>{const o={};(list||[]).forEach(k=>o[k]=true);if(o.lib&&['caged','sev','pow','tri','jazz','sus','sl','ext','alt','obs'].every(k=>o[k]))o.bundle=true;return o;};
+let ACCT=null;try{ACCT=JSON.parse(localStorage.getItem(AK)||'null');}catch(e){ACCT=null;}
+let FREE=!planActive(ACCT);
 /* ---------- helpers ---------- */
 const $=(s,r)=>(r||document).querySelector(s);
 const pad=n=>String(n).padStart(2,'0');
@@ -817,7 +825,7 @@ function viewOnboard(){
   if(o.step===0){
     body=`<h1>Welcome to Fretwise</h1><p class="muted">A few quick questions set up lessons for your guitar. It takes about a minute.</p>
       <label class="f">What should we call you?<input type="text" id="obName" value="${esc(o.name)}" data-in="obname" maxlength="24" placeholder="Nickname or first name"></label>
-      <p class="muted" style="font-size:.85rem">Your profile and progress are saved on this device for now. Accounts with sign-in and sync across your devices come with the hosted version.</p>`;
+      <p class="muted" style="font-size:.85rem">Your profile and progress are saved on this device for now. You can sign in later to start a free trial and keep your purchases on every device.</p>`;
   }else if(o.step===1){
     ok=!!o.age;
     body=`<h1>Who is learning?</h1><p class="muted">This decides how we introduce the guitar. Younger beginners get a puzzle. Everyone can try both.</p>
@@ -870,8 +878,8 @@ function viewProfile(){
     <div class="stack"><span class="eyebrow">Skill level</span><div class="row">${SKILL.map(k=>`<button class="chip" data-act="setLevel" data-v="${k.id}" aria-pressed="${p.level===k.id}">${k.name}</button>`).join('')}</div>
       <p class="muted" style="font-size:.88rem">Raising your level marks earlier lessons as skipped. Lowering it never removes progress.</p></div>
     <div class="stack"><span class="eyebrow">Picking hand</span><div class="row">${[['right','Right'],['left','Left']].map(a=>`<button class="chip" data-act="setHand" data-v="${a[0]}" aria-pressed="${p.hand===a[0]}">${a[1]}</button>`).join('')}</div></div></section>
-  ${FREE?`<section class="card"><div class="row between"><h2>Your plan</h2><span class="pill">Free version</span></div><p class="muted">The full version is a subscription. It adds:</p><ul style="margin:0;padding-left:18px;display:grid;gap:4px"><li>A Today screen with your streak, fret points and week at a glance</li><li>A practice scheduler with reminders</li><li>A goal tracker with completion rates and breakdowns</li><li>Progression challenges after every three lessons</li><li>Every lesson (the free version has five foundation lessons)</li><li>A Toolbox with tuning tones and a starter chord library</li></ul><p class="muted">Planned price: $9.99 a month or $59.99 a year, with a 7-day free trial. Subscriptions open when the app launches.</p></section>`:`<section class="card"><div class="row between"><h2>Your plan</h2><span class="pill good">Full version</span></div><p class="muted">Your subscription includes every lesson, the practice tools and the starter chord library. The metronome, the recording studio and the larger chord libraries are optional extras in the Store. Planned price: $9.99 a month or $59.99 a year, with a 7-day free trial. Billing arrives with the hosted version.</p></section>`}
-  <section class="card"><h2>Account</h2><p class="muted">Your progress is stored on this device. Sign-in and syncing between your phone, tablet and computer arrive with the hosted version.</p></section>
+  ${FREE?`<section class="card"><div class="row between"><h2>Your plan</h2><span class="pill">Free version</span></div><p class="muted">The full version is a subscription. It adds:</p><ul style="margin:0;padding-left:18px;display:grid;gap:4px"><li>A Today screen with your streak, fret points and week at a glance</li><li>A practice scheduler with reminders</li><li>A goal tracker with completion rates and breakdowns</li><li>Progression challenges after every three lessons</li><li>Every lesson (the free version has five foundation lessons)</li><li>A Toolbox with tuning tones and a starter chord library</li></ul><p class="muted">Try everything free for 7 days, then $59.99 a year or $9.99 a month. Cancel anytime before the trial ends and you will not be charged.</p><div><button class="btn" data-act="goPlan">Start your free trial</button></div></section>`:`<section class="card"><div class="row between"><h2>Your plan</h2><span class="pill good">Full version</span></div><p class="muted">Your subscription includes every lesson, the practice tools and the starter chord library. The metronome, the recording studio and the larger chord libraries are optional extras in the Store. ${planLine()}</p><div><button class="btn ghost small" data-act="goPlan">Manage plan</button></div></section>`}
+  <section class="card"><h2>Account</h2>${ACCT?`<p class="muted">Signed in as <b>${esc(ACCT.email)}</b>. Your plan and purchases follow you to any device. Your lesson progress and practice history are still stored on this device only.</p><div><button class="btn ghost small" data-act="signOut">Sign out</button></div>`:`<p class="muted">Sign in to start a trial and keep your purchases on every device. Your lesson progress and practice history stay on this device.</p><div><button class="btn small" data-act="goPlan">Sign in or create account</button></div>`}</section>
   <section class="card"><h2>Data</h2><div class="row"><button class="btn ghost small" data-act="redoSetup">Redo setup</button>${FREE?'':'<button class="btn ghost small" data-act="loadDemo">Load sample practice history</button>'}
     ${ui.resetAsk?'<button class="btn danger small" data-act="resetAll">Yes, erase everything</button><button class="btn ghost small" data-act="resetNo">Cancel</button>':'<button class="btn danger small" data-act="resetAsk">Erase all my data</button>'}</div></section>`;
 }
@@ -893,6 +901,7 @@ function seed(){
 let S;
 try{const raw=localStorage.getItem(KEY);S=raw?JSON.parse(raw):null;}catch(e){S=null}
 if(!S||S.v!==1)S=seed();
+S.owned=ownedFrom(ACCT&&ACCT.owned);
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const ui={tab:FREE?'learn':'today',lesson:null,chal:null,tool:'chords',cpack:null,croot:0,lq:{},cq:{},ct:{},cres:null,
   gDraft:null,pDraft:null,showGoalForm:false,showPlanForm:false,logMin:20,logDate:dstr(new Date()),chordLvl:0,store:'All',buy:null,ob:null,pz:null,gtab:null,vq:false,vshow:{},hl:null,resetAsk:false};
@@ -1383,7 +1392,7 @@ function viewStore(){
   S.owned=S.owned||{};
   const items=STORE.filter(x=>ui.store==='All'||x.cat===ui.store),mine=STORE.filter(x=>S.owned[x.id]);
   return `<header class="stack"><div class="eyebrow">Optional extras</div><h1>Store</h1></header>
-  <div class="notice">Prototype store. Items, names and prices are examples, and purchases are simulated: no payment is taken.</div>
+  <div class="notice">Test mode: purchases are saved to your account, but no payment is taken yet.</div>
   <div class="row">${chips(['All'].concat(STORE_CATS),ui.store,'storeCat')}</div>
   <div class="grid2">${items.map(x=>`<section class="card"><div class="row between"><span class="row" style="gap:6px"><span class="pill">${esc(x.cat)}</span>${x.id==='bundle'?'<span class="pill good">Best value</span>':''}</span><span class="mono">${S.owned[x.id]?'':esc(x.price)}</span></div><h3>${esc(x.name)}</h3><p class="muted">${esc(x.desc)}${PACK_INFO[x.id]?' '+packCount(x.id)+' chord shapes.':''}</p>${!S.owned.bundle&&!S.owned[x.id]&&x.id!=='bundle'&&x.id!=='metro'&&x.id!=='rec'?`<p class="muted" style="font-size:.88rem"><b>Better value:</b> the Complete chord collection has every chord item for $${BUNDLE_PRICE.toFixed(2)} (save ${SAVE_PCT}%).</p>`:''}${previewOf(x.id)}
     ${S.owned[x.id]?'<span class="pill good">In your library</span>':ui.buy===x.id?`<div class="notice"><span>Test purchase of ${esc(x.name)}. No payment is taken.</span><span class="row"><button class="btn small" data-act="buyYes" data-v="${x.id}">Confirm</button><button class="btn small ghost" data-act="buyNo">Cancel</button></span></div>`:`<div><button class="btn small" data-act="buy" data-v="${x.id}">Buy</button></div>`}</section>`).join('')}</div>
@@ -1398,9 +1407,134 @@ function render(){
   $('#tabs').hidden=!!ob;
   if(!ob)drawTabs();
   const v=$('#view');
-  v.innerHTML=ob?viewOnboard():ui.tab==='today'?viewToday():ui.tab==='learn'?viewLearn():ui.tab==='practice'?viewPractice():ui.tab==='goals'?viewGoals():ui.tab==='profile'?viewProfile():ui.tab==='store'?viewStore():viewTools();
+  v.innerHTML=ob?viewOnboard():ui.tab==='today'?viewToday():ui.tab==='learn'?viewLearn():ui.tab==='practice'?viewPractice():ui.tab==='goals'?viewGoals():ui.tab==='profile'?viewProfile():ui.tab==='store'?viewStore():ui.tab==='plan'?viewPlan():viewTools();
   if(T.run)timerPaint();
   if(REC.run)recPaint();
+}
+
+
+/* ---------- account ---------- */
+const SB=(window.supabase&&window.supabase.createClient)?window.supabase.createClient('https://uvxutpakarvejriodmyv.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2eHV0cGFrYXJ2ZWpyaW9kbXl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NTU0NTMsImV4cCI6MjEwODUzMTQ1M30.Bx6qUmnNzE7U_w0HkZxv3a4zKlYHgoreXo3PrSA7umE'):null;
+function fmtDate(d){try{return new Date(d).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});}catch(e){return '';}}
+function planLine(){
+  if(!ACCT)return '';
+  if(ACCT.admin)return 'Owner account: every lesson and every Store item is unlocked.';
+  if(ACCT.status==='trialing')return 'Your free trial ends on '+fmtDate(ACCT.trial_end)+'. Then your '+(ACCT.interval==='year'?'$59.99 yearly':'$9.99 monthly')+' plan starts, unless you cancel first.';
+  if(ACCT.status==='subscribed')return 'Your '+(ACCT.interval==='year'?'yearly':'monthly')+' plan is active.';
+  return '';
+}
+function applyAcct(){
+  FREE=!planActive(ACCT);
+  if(!tabList().some(t=>t[0]===ui.tab)&&ui.tab!=='profile'&&ui.tab!=='plan')ui.tab=FREE?'learn':'today';
+}
+function setAcct(a){
+  ACCT=a;
+  try{if(a)localStorage.setItem(AK,JSON.stringify(a));else localStorage.removeItem(AK);}catch(e){}
+  S.owned=ownedFrom(a&&a.owned);save();applyAcct();
+}
+let _refreshing=null;
+function acctRefresh(){return _refreshing||(_refreshing=acctDoRefresh().then(()=>{_refreshing=null;},()=>{_refreshing=null;}));}
+async function acctDoRefresh(){
+  if(!SB)return;
+  let session=null;
+  try{const r=await SB.auth.getSession();session=r.data&&r.data.session;}catch(e){return;}
+  if(!session){if(ACCT){setAcct(null);render();}return;}
+  const r=await SB.rpc('my_account');
+  if(r.error||!r.data){toast('Could not reach your account. Showing what is saved on this device.');return;}
+  const d=r.data,pl=d.plan||{};
+  setAcct({email:session.user.email,status:pl.status||'free',interval:pl.interval||null,trial_end:pl.trial_end||null,owned:d.owned||[],test:!!d.test_mode,admin:!!d.admin});
+  render();
+}
+async function sendCode(){
+  const em=(ui.email||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(em)){toast('Enter a valid email address.');return;}
+  if(!SB){toast('Sign-in is not available right now.');return;}
+  ui.busy=true;render();
+  const r=await SB.auth.signInWithOtp({email:em,options:{shouldCreateUser:true,emailRedirectTo:location.origin+'/'}});
+  ui.busy=false;
+  if(r.error){toast(r.error.message||'Could not send the code. Try again in a minute.');render();return;}
+  ui.email=em;ui.otpSent=true;ui.code='';render();
+}
+async function verifyCode(){
+  const code=(ui.code||'').replace(/\s+/g,'');
+  if(code.length<6){toast('Enter the code from your email.');return;}
+  ui.busy=true;render();
+  const r=await SB.auth.verifyOtp({email:ui.email,token:code,type:'email'});
+  ui.busy=false;
+  if(r.error){toast('That code did not work. Check it and try again.');render();return;}
+  ui.otpSent=false;ui.code='';
+  await acctRefresh();
+  if(ui.after){ui.tab=ui.after;ui.after=null;ui.planMsg=null;}
+  render();window.scrollTo(0,0);
+}
+async function startTrial(){
+  if(!ACCT||!SB)return;
+  ui.busy=true;render();
+  const r=await SB.rpc('start_trial',{p_interval:ui.int||'year'});
+  ui.busy=false;
+  if(r.error){toast(r.error.message||'Could not start the trial.');render();return;}
+  await acctRefresh();
+  ui.tab='today';ui.planMsg=null;
+  toast('Your free trial has started. Welcome to the full version.');
+  render();window.scrollTo(0,0);
+}
+async function cancelPlan(){
+  if(!SB)return;
+  const r=await SB.rpc('cancel_plan');
+  ui.cancelAsk=false;
+  if(r.error){toast(r.error.message||'Could not cancel.');render();return;}
+  await acctRefresh();
+  toast('Your plan was cancelled. You are back on the free version.');
+  render();
+}
+async function signOut(){
+  try{if(SB)await SB.auth.signOut();}catch(e){}
+  setAcct(null);ui.tab='learn';ui.otpSent=false;render();window.scrollTo(0,0);
+}
+async function doBuy(v){
+  if(!SB||!ACCT)return;
+  const ids=v==='bundle'?['lib'].concat(PACK_IDS):[v];
+  const r=await SB.rpc('buy_items',{p_items:ids});
+  ui.buy=null;
+  if(r.error){toast(r.error.message||'The purchase did not go through.');render();return;}
+  await acctRefresh();
+  toast('Added to your library. This was a test purchase.');
+  render();
+}
+function acctBoot(){
+  if(!SB)return;
+  try{SB.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'||ev==='USER_UPDATED')setTimeout(acctRefresh,0);});}catch(e){}
+  acctRefresh();
+}
+function viewPlan(){
+  const msg=ui.planMsg?`<div class="notice">${esc(ui.planMsg)}</div>`:'';
+  const busy=ui.busy?'disabled':'';
+  if(!SB)return `<header class="stack"><div class="eyebrow">Your account</div><h1>Sign-in unavailable</h1></header><div class="notice">Sign-in could not load. Check your connection and reload the page.</div>`;
+  if(!ACCT){
+    if(ui.otpSent)return `<header class="stack"><div class="eyebrow">Your account</div><h1>Check your email</h1></header>${msg}
+      <section class="card"><p class="muted">We sent a code to <b>${esc(ui.email)}</b>. Type it below. If the email has a link instead, you can tap the link.</p>
+      <label class="stack"><span class="eyebrow">Code</span><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" data-in="code" value="${esc(ui.code||'')}" placeholder="123456" aria-label="Code from your email"></label>
+      <div class="row"><button class="btn" data-act="verifyCode" ${busy}>Sign in</button><button class="btn ghost" data-act="changeEmail">Use a different email</button></div></section>`;
+    return `<header class="stack"><div class="eyebrow">Your account</div><h1>Sign in or create an account</h1></header>${msg}
+      <section class="card"><p class="muted">Enter your email and we will send you a code. There is no password to remember. If you are new, this creates your account.</p>
+      <label class="stack"><span class="eyebrow">Email</span><input type="email" autocomplete="email" data-in="email" value="${esc(ui.email||'')}" placeholder="you@example.com" aria-label="Email address"></label>
+      <div><button class="btn" data-act="sendCode" ${busy}>Email me a code</button></div></section>`;
+  }
+  if(planActive(ACCT)){
+    return `<header class="stack"><div class="eyebrow">Your account</div><h1>Your plan</h1></header>
+      <section class="card"><div class="row between"><h2>Full version</h2><span class="pill good">${ACCT.admin?'Owner':ACCT.status==='trialing'?'Free trial':'Subscribed'}</span></div><p class="muted">${esc(planLine())}</p>
+      ${ACCT.admin?'':ui.cancelAsk?`<div class="notice"><span>Cancel your plan? You will go back to the free version.</span><span class="row"><button class="btn small danger" data-act="cancelYes">Yes, cancel</button><button class="btn small ghost" data-act="cancelNo">Keep it</button></span></div>`:`<div><button class="btn ghost small" data-act="cancelAsk">Cancel plan</button></div>`}</section>`;
+  }
+  const iv=ui.int||'year',price=iv==='year'?'$59.99':'$9.99',per=iv==='year'?'a year':'a month';
+  const billOn=fmtDate(Date.now()+7*864e5);
+  return `<header class="stack"><div class="eyebrow">Full version</div><h1>Start your 7-day free trial</h1>
+    <p class="muted">Every lesson, the practice scheduler, goals, challenges, tuning tones and a starter chord library. The metronome, the recording studio and the bigger chord libraries stay optional extras in the Store.</p></header>${msg}
+    <div class="row" style="align-items:stretch">
+      <button class="pick" data-act="pickInt" data-v="year" aria-pressed="${iv==='year'}"><span class="pill good">Best value</span><b>Yearly</b><span class="mono">$59.99 a year</span><span class="muted">About $5 a month, billed once a year.</span></button>
+      <button class="pick" data-act="pickInt" data-v="month" aria-pressed="${iv==='month'}"><b>Monthly</b><span class="mono">$9.99 a month</span><span class="muted">Billed every month.</span></button>
+    </div>
+    <section class="card"><p><b>7 days free, then ${price} ${per}, starting ${esc(billOn)}.</b> Cancel anytime before then and you will not be charged.</p>
+    ${ACCT.test?`<div class="notice">Test mode: no card is taken yet. This only turns on the full version for your account.</div><div><button class="btn" data-act="startTrial" ${busy}>Start free trial</button></div>`:`<div class="notice">Payments open soon.</div><div><button class="btn" disabled>Start free trial</button></div>`}</section>`;
 }
 
 /* ---------- events ---------- */
@@ -1411,7 +1545,16 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'tab':ui.tab=v;ui.lesson=null;ui.chal=null;render();window.scrollTo(0,0);break;
     case 'locked':toast('Finish the three lessons above to unlock this challenge.');break;
-    case 'subLock':toast('This lesson is part of the full version, which is a subscription.');break;
+    case 'subLock':case 'goPlan':ui.tab='plan';ui.planMsg=null;ui.cancelAsk=false;render();window.scrollTo(0,0);break;
+    case 'pickInt':ui.int=v;render();break;
+    case 'sendCode':sendCode();break;
+    case 'verifyCode':verifyCode();break;
+    case 'changeEmail':ui.otpSent=false;ui.code='';render();break;
+    case 'startTrial':startTrial();break;
+    case 'cancelAsk':ui.cancelAsk=true;render();break;
+    case 'cancelNo':ui.cancelAsk=false;render();break;
+    case 'cancelYes':cancelPlan();break;
+    case 'signOut':signOut();break;
     case 'goStore':ui.tab='store';ui.store=v||'All';ui.buy=null;render();window.scrollTo(0,0);break;
     case 'cpack':ui.cpack=v;render();break;
     case 'rkind':ui.recKind=v;render();break;
@@ -1476,9 +1619,9 @@ document.addEventListener('click',e=>{
     case 'obLevel':ui.ob.level=v;render();break;
     case 'obGoal':ui.ob.goal=v;render();break;
     case 'storeCat':ui.store=v;ui.buy=null;render();break;
-    case 'buy':ui.buy=v;render();break;
+    case 'buy':if(!ACCT){ui.after='store';ui.planMsg='Create a free account to buy extras. Your purchases are saved to it and follow you to any device.';ui.tab='plan';render();window.scrollTo(0,0);break;}ui.buy=v;render();break;
     case 'buyNo':ui.buy=null;render();break;
-    case 'buyYes':S.owned=S.owned||{};S.owned[v]=true;if(v==='bundle'){S.owned.lib=true;PACK_IDS.forEach(k=>S.owned[k]=true);}ui.buy=null;save();toast('Added to your library. This was a test purchase.');render();break;
+    case 'buyYes':doBuy(v);break;
     case 'obFinish':finishOnboarding();render();window.scrollTo(0,0);break;
     case 'setType':S.profile.type=v;ui.lq={};ui.cq={};ui.ct={};ui.pz=null;ui.cres=null;ui.hl=null;save();render();toast('Switched to '+TYPES[v].name.toLowerCase()+' guitar.');break;
     case 'setAge':S.profile.age=v;ui.gtab=null;save();render();break;
@@ -1505,6 +1648,8 @@ document.addEventListener('input',e=>{
   const t=e.target,k=t.dataset.in;if(!k)return;
   switch(k){
     case 'obname':ui.ob.name=t.value;break;
+    case 'email':ui.email=t.value;break;
+    case 'code':ui.code=t.value;break;
     case 'rtitle':ui.recTitle=t.value;break;
     case 'rtitle2':{const x=(REC.takes||[]).find(q=>q.id===t.dataset.id);if(x)x.title=t.value;break;}
     case 'rnotes':{const x=(REC.takes||[]).find(q=>q.id===t.dataset.id);if(x)x.notes=t.value;break;}
@@ -1537,5 +1682,6 @@ document.addEventListener('keydown',e=>{
   const t=e.target.closest&&e.target.closest('g[data-act]');if(t){e.preventDefault();t.dispatchEvent(new MouseEvent('click',{bubbles:true}));}
 });
 render();
+acctBoot();
 })();
 </script>
