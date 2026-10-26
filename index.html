@@ -1512,13 +1512,13 @@ function viewPlan(){
   if(!SB)return `<header class="stack"><div class="eyebrow">Your account</div><h1>Sign-in unavailable</h1></header><div class="notice">Sign-in could not load. Check your connection and reload the page.</div>`;
   if(!ACCT){
     if(ui.otpSent)return `<header class="stack"><div class="eyebrow">Your account</div><h1>Check your email</h1></header>${msg}
-      <section class="card"><p class="muted">We sent a code to <b>${esc(ui.email)}</b>. Type it below. If the email has a link instead, you can tap the link.</p>
+      <section class="card"><p class="muted">We sent a sign-in email to <b>${esc(ui.email)}</b>. Tap the link in it to finish signing in. If the email shows a code instead, type it below. Check your spam folder if it does not arrive within a minute.</p>
       <label class="stack"><span class="eyebrow">Code</span><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" data-in="code" value="${esc(ui.code||'')}" placeholder="123456" aria-label="Code from your email"></label>
       <div class="row"><button class="btn" data-act="verifyCode" ${busy}>Sign in</button><button class="btn ghost" data-act="changeEmail">Use a different email</button></div></section>`;
     return `<header class="stack"><div class="eyebrow">Your account</div><h1>Sign in or create an account</h1></header>${msg}
-      <section class="card"><p class="muted">Enter your email and we will send you a code. There is no password to remember. If you are new, this creates your account.</p>
+      <section class="card"><p class="muted">Enter your email and we will send you a sign-in link. There is no password to remember. If you are new, this creates your account.</p>
       <label class="stack"><span class="eyebrow">Email</span><input type="email" autocomplete="email" data-in="email" value="${esc(ui.email||'')}" placeholder="you@example.com" aria-label="Email address"></label>
-      <div><button class="btn" data-act="sendCode" ${busy}>Email me a code</button></div></section>`;
+      <div><button class="btn" data-act="sendCode" ${busy}>Email me a sign-in link</button></div></section>`;
   }
   if(planActive(ACCT)){
     return `<header class="stack"><div class="eyebrow">Your account</div><h1>Your plan</h1></header>
